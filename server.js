@@ -5,10 +5,9 @@ const { createCanvas } = require("canvas");
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 
-// -------------------------------------
-// 🔥 PARSEUR SWOT ULTRA ROBUSTE
-// -------------------------------------
-function parseSwot(raw) {
+// ==== PARSING ROBUSTE DES 4 SECTIONS ====
+function parseSwot(rawText) {
+  const lines = (rawText || "").split(/\r?\n/);
   const sections = {
     forces: [],
     faiblesses: [],
@@ -16,42 +15,41 @@ function parseSwot(raw) {
     menaces: []
   };
 
-  // Normalisation très importante
-  const text = raw
-    .replace(/\r/g, "")
-    .replace(/\u2019/g, "'")
-    .replace(/–/g, "-")
-    .trim();
+  let current = null;
 
-  // Extraction via blocs
-  const regex = /(\d\.\s*(Forces|Faiblesses|Opportunités|Opportunites|Menaces))([\s\S]*?)(?=\n\d\.|$)/gi;
-  let match;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
 
-  while ((match = regex.exec(text)) !== null) {
-    const title = match[2].toLowerCase();
-    const block = match[3];
+    // Titres des sections
+    if (/^1\.\s*Forces/i.test(trimmed)) {
+      current = "forces";
+      continue;
+    }
+    if (/^2\.\s*Faiblesses/i.test(trimmed)) {
+      current = "faiblesses";
+      continue;
+    }
+    if (/^3\.\s*Opportunités/i.test(trimmed) || /^3\.\s*Opportunites/i.test(trimmed)) {
+      current = "opportunites";
+      continue;
+    }
+    if (/^4\.\s*Menaces/i.test(trimmed)) {
+      current = "menaces";
+      continue;
+    }
 
-    const lines = block
-      .split("\n")
-      .map(l => l.trim())
-      .filter(l => l.startsWith("-"))
-      .map(l => l.replace(/^-+\s*/, "").trim());
-
-    if (title.includes("force")) sections.forces = lines;
-    if (title.includes("faiblesse")) sections.faiblesses = lines;
-    if (title.includes("opportun")) sections.opportunites = lines;
-    if (title.includes("menace")) sections.menaces = lines;
+    // Puces
+    if (trimmed.startsWith("-") && current) {
+      sections[current].push(trimmed.replace(/^-\s*/, ""));
+    }
   }
 
   return sections;
 }
 
-// -------------------------------------
-// 🎨 DESSIN
-// -------------------------------------
+// ==== RENDU SWOT EN PNG ====
 function drawSwotImage(swotText) {
-  const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText);
-
   const width = 2000;
   const height = 2000;
 
@@ -72,39 +70,47 @@ function drawSwotImage(swotText) {
     menaces: "#fffde7"
   };
 
-  function drawBox(title, lines, x, y, color) {
+  const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText || "");
+
+  function drawBox(title, textLines, x, y, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, boxWidth, boxHeight);
 
-    ctx.strokeStyle = "#000";
+    ctx.strokeStyle = "#000000";
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, boxWidth, boxHeight);
 
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = "#000000";
     ctx.font = "bold 32px sans-serif";
+    ctx.textBaseline = "top";
     ctx.fillText(title, x + 20, y + 20);
 
     ctx.font = "24px sans-serif";
-    const lineHeight = 32;
-    let yCursor = y + 80;
+    const lineHeight = 30;
+    let cursorY = y + 70;
     const maxWidth = boxWidth - 40;
 
-    for (const line of lines) {
+    function wrap(line) {
+      const words = line.split(" ");
       let current = "";
-      for (const word of line.split(" ")) {
-        const test = current ? current + " " + word : word;
+      for (const w of words) {
+        const test = current ? current + " " + w : w;
         if (ctx.measureText(test).width > maxWidth) {
-          ctx.fillText("• " + current, x + 20, yCursor);
-          yCursor += lineHeight;
-          current = word;
+          ctx.fillText(current, x + 20, cursorY);
+          cursorY += lineHeight;
+          current = w;
         } else {
           current = test;
         }
       }
       if (current) {
-        ctx.fillText("• " + current, x + 20, yCursor);
-        yCursor += lineHeight;
+        ctx.fillText(current, x + 20, cursorY);
+        cursorY += lineHeight;
       }
+    }
+
+    for (const t of textLines) {
+      wrap("• " + t);
     }
   }
 
@@ -116,25 +122,28 @@ function drawSwotImage(swotText) {
   return canvas.toBuffer("image/png");
 }
 
+// ==== ROUTE DE DEBUG POUR TESTER LE PARSING ====
+app.post("/test-parsing", (req, res) => {
+  const swotText = req.body.swotText || "";
+  const sections = parseSwot(swotText);
+  res.json({ success: true, ...sections });
+});
+
+// ==== ROUTE PRINCIPALE ====
 app.post("/render-swot", (req, res) => {
   try {
     const swotText = req.body.swotText;
-
-    if (!swotText) {
-      return res.status(400).json({ error: "swotText manquant" });
-    }
+    if (!swotText) return res.status(400).json({ error: "swotText manquant" });
 
     const png = drawSwotImage(swotText);
-    return res.json({
-      success: true,
-      png_base64: png.toString("base64")
-    });
+    const b64 = png.toString("base64");
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json({ success: true, png_base64: b64 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-app.listen(8080, () =>
-  console.log("🚀 SWOT Renderer running on port 8080")
-);
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log("🚀 SWOT Renderer ready on port", PORT));
+
