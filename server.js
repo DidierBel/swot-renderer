@@ -5,16 +5,34 @@ const { createCanvas } = require("canvas");
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 
-// --- Nouvelle fonction robuste pour parser le texte SWOT ---
 function parseSwot(rawText) {
-  const lines = (rawText || "").split(/\r?\n/);
-  const sections = {
-    forces: [],
-    faiblesses: [],
-    opportunites: [],
-    menaces: []
+  const text = (rawText || "").trim();
+
+  // Expressions régulières très robustes
+  const sectionRegex = {
+    forces: /1\.\s*Forces([\s\S]*?)(?=2\.\s*Faiblesses|$)/i,
+    faiblesses: /2\.\s*Faiblesses([\s\S]*?)(?=3\.\s*Opportunités|3\.\s*Opportunites|$)/i,
+    opportunites: /3\.\s*Opportunités|3\.\s*Opportunites([\s\S]*?)(?=4\.\s*Menaces|$)/i,
+    menaces: /4\.\s*Menaces([\s\S]*)/i
   };
 
+  function extract(regex) {
+    const match = text.match(regex);
+    if (!match) return [];
+    return match[1]
+      .split("\n")
+      .map(l => l.trim())
+      .filter(l => l.startsWith("-"))
+      .map(l => l.replace(/^-\s*/, ""));
+  }
+
+  return {
+    forces: extract(sectionRegex.forces),
+    faiblesses: extract(sectionRegex.faiblesses),
+    opportunites: extract(sectionRegex.opportunites),
+    menaces: extract(sectionRegex.menaces)
+  };
+}
   let current = null;
 
   for (const line of lines) {
