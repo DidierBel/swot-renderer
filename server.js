@@ -138,4 +138,3 @@ app.post("/render-swot", (req, res) => {
 app.listen(8080, () =>
   console.log("🚀 SWOT Renderer running on port 8080")
 );
-
