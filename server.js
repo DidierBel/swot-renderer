@@ -5,6 +5,49 @@ const { createCanvas } = require("canvas");
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 
+// --- Nouvelle fonction robuste pour parser le texte SWOT ---
+function parseSwot(rawText) {
+  const lines = (rawText || "").split(/\r?\n/);
+  const sections = {
+    forces: [],
+    faiblesses: [],
+    opportunites: [],
+    menaces: []
+  };
+
+  let current = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Détection des titres de section
+    if (/^1\.\s*Forces/i.test(trimmed)) {
+      current = "forces";
+      continue;
+    }
+    if (/^2\.\s*Faiblesses/i.test(trimmed)) {
+      current = "faiblesses";
+      continue;
+    }
+    if (/^3\.\s*Opportunités/i.test(trimmed) || /^3\.\s*Opportunites/i.test(trimmed)) {
+      current = "opportunites";
+      continue;
+    }
+    if (/^4\.\s*Menaces/i.test(trimmed)) {
+      current = "menaces";
+      continue;
+    }
+
+    // Puces de la section courante
+    if (trimmed.startsWith("-") && current) {
+      sections[current].push(trimmed.replace(/^-\s*/, ""));
+    }
+  }
+
+  return sections;
+}
+
 function drawSwotImage(swotText) {
   const width = 2000;
   const height = 2000;
@@ -12,9 +55,11 @@ function drawSwotImage(swotText) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
+  // Fond blanc
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
+  // Layout
   const margin = 80;
   const boxWidth = (width - margin * 3) / 2;
   const boxHeight = (height - margin * 3) / 2;
@@ -26,19 +71,26 @@ function drawSwotImage(swotText) {
     menaces: "#fffde7"
   };
 
+  // Récupérer les sections à partir du texte
+  const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText || "");
+
   function drawBox(title, textLines, x, y, color) {
+    // Fond
     ctx.fillStyle = color;
     ctx.fillRect(x, y, boxWidth, boxHeight);
 
+    // Bordure
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, boxWidth, boxHeight);
 
+    // Titre
     ctx.fillStyle = "#000000";
     ctx.font = "bold 32px sans-serif";
     ctx.textBaseline = "top";
     ctx.fillText(title, x + 20, y + 20);
 
+    // Texte
     ctx.font = "24px sans-serif";
 
     const lineHeight = 30;
@@ -72,48 +124,11 @@ function drawSwotImage(swotText) {
     }
   }
 
-  const raw = swotText || "";
-
-  function extractSection(labelRegex) {
-    const regex = new RegExp(labelRegex + "[\\s\\S]*?(?=\\n+[1-4]\\.\\s|$)", "i");
-    const match = raw.match(regex);
-    if (!match) return [];
-
-    const block = match[0];
-
-    return block
-      .split("\n")
-      .filter((l) => l.trim().startsWith("-"))
-      .map((l) => l.replace(/^-\s*/, "").trim());
-  }
-
-  const forces = extractSection("1\\.\\s*Forces");
-  const faiblesses = extractSection("2\\.\\s*Faiblesses");
-  const opportunites = extractSection("3\\.\\s*Opportunités");
-  const menaces = extractSection("4\\.\\s*Menaces");
-
+  // Dessiner les 4 cases
   drawBox("Forces", forces, margin, margin, colors.forces);
-  drawBox(
-    "Faiblesses",
-    faiblesses,
-    margin * 2 + boxWidth,
-    margin,
-    colors.faiblesses
-  );
-  drawBox(
-    "Opportunités",
-    opportunites,
-    margin,
-    margin * 2 + boxHeight,
-    colors.opportunites
-  );
-  drawBox(
-    "Menaces",
-    menaces,
-    margin * 2 + boxWidth,
-    margin * 2 + boxHeight,
-    colors.menaces
-  );
+  drawBox("Faiblesses", faiblesses, margin * 2 + boxWidth, margin, colors.faiblesses);
+  drawBox("Opportunités", opportunites, margin, margin * 2 + boxHeight, colors.opportunites);
+  drawBox("Menaces", menaces, margin * 2 + boxWidth, margin * 2 + boxHeight, colors.menaces);
 
   return canvas.toBuffer("image/png");
 }
