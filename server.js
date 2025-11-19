@@ -5,29 +5,10 @@ const { createCanvas } = require("canvas");
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 
-// ----------------------------
-// 🔍 DEBUG : Inspecter le texte reçu
-// ----------------------------
-app.post("/debug-raw", (req, res) => {
-  const raw = req.body.swotText || "";
-
-  return res.json({
-    success: true,
-    rawText: raw,
-    rawChars: raw.split("").map(c => c.charCodeAt(0)),
-    preview: raw.slice(0, 500)
-  });
-});
-
-// ----------------------------
-// 🧠 Parse SWOT avancé + tolérant
-// ----------------------------
-function parseSwot(rawText) {
-  const lines = (rawText || "")
-    .replace(/\r/g, "")
-    .replace(/\u200B|\u200C|\u200D|\uFEFF/g, "") // ZERO WIDTH fixes
-    .split("\n");
-
+// -------------------------------------
+// 🔥 PARSEUR SWOT ULTRA ROBUSTE
+// -------------------------------------
+function parseSwot(raw) {
   const sections = {
     forces: [],
     faiblesses: [],
@@ -35,51 +16,48 @@ function parseSwot(rawText) {
     menaces: []
   };
 
-  let current = null;
+  // Normalisation très importante
+  const text = raw
+    .replace(/\r/g, "")
+    .replace(/\u2019/g, "'")
+    .replace(/–/g, "-")
+    .trim();
 
-  for (const line of lines) {
-    const trimmed = line.trim();
+  // Extraction via blocs
+  const regex = /(\d\.\s*(Forces|Faiblesses|Opportunités|Opportunites|Menaces))([\s\S]*?)(?=\n\d\.|$)/gi;
+  let match;
 
-    if (!trimmed) continue;
+  while ((match = regex.exec(text)) !== null) {
+    const title = match[2].toLowerCase();
+    const block = match[3];
 
-    // Détection titres
-    if (/^1\.\s*Forces/i.test(trimmed)) {
-      current = "forces";
-      continue;
-    }
-    if (/^2\.\s*Faiblesses/i.test(trimmed)) {
-      current = "faiblesses";
-      continue;
-    }
-    if (/^3\.\s*Opportunités/i.test(trimmed) || /^3\.\s*Opportunites/i.test(trimmed)) {
-      current = "opportunites";
-      continue;
-    }
-    if (/^4\.\s*Menaces/i.test(trimmed)) {
-      current = "menaces";
-      continue;
-    }
+    const lines = block
+      .split("\n")
+      .map(l => l.trim())
+      .filter(l => l.startsWith("-"))
+      .map(l => l.replace(/^-+\s*/, "").trim());
 
-    // Ajout des puces
-    if (trimmed.startsWith("-") && current) {
-      sections[current].push(trimmed.replace(/^-\s*/, ""));
-    }
+    if (title.includes("force")) sections.forces = lines;
+    if (title.includes("faiblesse")) sections.faiblesses = lines;
+    if (title.includes("opportun")) sections.opportunites = lines;
+    if (title.includes("menace")) sections.menaces = lines;
   }
 
   return sections;
 }
 
-// ----------------------------
-// 🎨 Génération image SWOT
-// ----------------------------
+// -------------------------------------
+// 🎨 DESSIN
+// -------------------------------------
 function drawSwotImage(swotText) {
+  const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText);
+
   const width = 2000;
   const height = 2000;
 
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // fond blanc
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
@@ -94,11 +72,7 @@ function drawSwotImage(swotText) {
     menaces: "#fffde7"
   };
 
-  const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText);
-
-  console.log("📌 Parsed SWOT:", { forces, faiblesses, opportunites, menaces });
-
-  function drawBox(title, textLines, x, y, color) {
+  function drawBox(title, lines, x, y, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, boxWidth, boxHeight);
 
@@ -107,38 +81,31 @@ function drawSwotImage(swotText) {
     ctx.strokeRect(x, y, boxWidth, boxHeight);
 
     ctx.fillStyle = "#000";
-    ctx.font = "bold 34px sans-serif";
-    ctx.textBaseline = "top";
+    ctx.font = "bold 32px sans-serif";
     ctx.fillText(title, x + 20, y + 20);
 
     ctx.font = "24px sans-serif";
-
-    const lineHeight = 30;
-    let cursorY = y + 80;
+    const lineHeight = 32;
+    let yCursor = y + 80;
     const maxWidth = boxWidth - 40;
 
-    const wrap = (text) => {
-      const words = text.split(" ");
-      let line = "";
-
-      for (let w of words) {
-        const testLine = line ? line + " " + w : w;
-        if (ctx.measureText(testLine).width > maxWidth) {
-          ctx.fillText(line, x + 20, cursorY);
-          cursorY += lineHeight;
-          line = w;
+    for (const line of lines) {
+      let current = "";
+      for (const word of line.split(" ")) {
+        const test = current ? current + " " + word : word;
+        if (ctx.measureText(test).width > maxWidth) {
+          ctx.fillText("• " + current, x + 20, yCursor);
+          yCursor += lineHeight;
+          current = word;
         } else {
-          line = testLine;
+          current = test;
         }
       }
-
-      if (line) {
-        ctx.fillText(line, x + 20, cursorY);
-        cursorY += lineHeight;
+      if (current) {
+        ctx.fillText("• " + current, x + 20, yCursor);
+        yCursor += lineHeight;
       }
-    };
-
-    textLines.forEach(t => wrap("• " + t));
+    }
   }
 
   drawBox("Forces", forces, margin, margin, colors.forces);
@@ -149,36 +116,26 @@ function drawSwotImage(swotText) {
   return canvas.toBuffer("image/png");
 }
 
-// ----------------------------
-// 🖼 Route principale
-// ----------------------------
 app.post("/render-swot", (req, res) => {
   try {
     const swotText = req.body.swotText;
 
     if (!swotText) {
-      return res.status(400).json({ error: "Champ 'swotText' manquant" });
+      return res.status(400).json({ error: "swotText manquant" });
     }
 
     const png = drawSwotImage(swotText);
-    const b64 = png.toString("base64");
-
-    res.json({
+    return res.json({
       success: true,
-      png_base64: b64
+      png_base64: png.toString("base64")
     });
 
   } catch (err) {
-    console.error("🔥 ERREUR:", err);
-    res.status(500).json({ error: "Erreur serveur SWOT", details: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ----------------------------
-// 🚀 Lancement serveur
-// ----------------------------
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`🚀 SWOT Renderer running on http://localhost:${PORT}`);
-});
+app.listen(8080, () =>
+  console.log("🚀 SWOT Renderer running on port 8080")
+);
 
