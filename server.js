@@ -75,7 +75,7 @@ function drawSwotImage(swotText) {
   const raw = swotText || "";
 
   function extractSection(labelRegex) {
-    const regex = new RegExp(labelRegex + "[\\s\\S]*?(?=\\n\\n[1-4]\\.\\s|$)", "i");
+    const regex = new RegExp(labelRegex + "[\\s\\S]*?(?=\\n+[1-4]\\.\\s|$)", "i");
     const match = raw.match(regex);
     if (!match) return [];
 
