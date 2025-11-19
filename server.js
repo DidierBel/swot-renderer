@@ -66,7 +66,7 @@ function drawSwotImage(swotText) {
   const colors = {
     forces: "#e3f2fd",
     faiblesses: "#ffebee",
-    opportunites: "#e8f5e9",
+    opportunites: "#03A333",
     menaces: "#fffde7"
   };
 
