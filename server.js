@@ -132,6 +132,28 @@ function drawSwotImage(swotText) {
 
   return canvas.toBuffer("image/png");
 }
+// Route de debug pour voir ce que parseSwot() comprend
+app.post("/debug-swot", (req, res) => {
+  try {
+    const swotText = req.body.swotText || "";
+    const parsed = parseSwot(swotText);
+
+    return res.json({
+      success: true,
+      forces: parsed.forces,
+      faiblesses: parsed.faiblesses,
+      opportunites: parsed.opportunites,
+      menaces: parsed.menaces,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: "Erreur dans /debug-swot",
+      details: err.message,
+    });
+  }
+});
 
 app.post("/render-swot", (req, res) => {
   try {
