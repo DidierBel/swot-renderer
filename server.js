@@ -5,9 +5,10 @@ const { createCanvas } = require("canvas");
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 
-// ==== PARSING ROBUSTE DES 4 SECTIONS ====
+// ==== PARSING ULTRA-ROBUSTE DES 4 SECTIONS ====
 function parseSwot(rawText) {
   const lines = (rawText || "").split(/\r?\n/);
+
   const sections = {
     forces: [],
     faiblesses: [],
@@ -21,20 +22,20 @@ function parseSwot(rawText) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Titres des sections
-    if (/^1\.\s*Forces/i.test(trimmed)) {
+    // Titres des sections — robustes, acceptent ":", BOM, espaces invisibles, etc.
+    if (/^[^\S\r\n]*1\.\s*Forces\s*:?\s*$/i.test(trimmed)) {
       current = "forces";
       continue;
     }
-    if (/^2\.\s*Faiblesses/i.test(trimmed)) {
+    if (/^[^\S\r\n]*2\.\s*Faiblesses\s*:?\s*$/i.test(trimmed)) {
       current = "faiblesses";
       continue;
     }
-    if (/^3\.\s*Opportunités/i.test(trimmed) || /^3\.\s*Opportunites/i.test(trimmed)) {
+    if (/^[^\S\r\n]*3\.\s*(Opportunités|Opportunites)\s*:?\s*$/i.test(trimmed)) {
       current = "opportunites";
       continue;
     }
-    if (/^4\.\s*Menaces/i.test(trimmed)) {
+    if (/^[^\S\r\n]*4\.\s*Menaces\s*:?\s*$/i.test(trimmed)) {
       current = "menaces";
       continue;
     }
@@ -146,4 +147,3 @@ app.post("/render-swot", (req, res) => {
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log("🚀 SWOT Renderer ready on port", PORT));
-
