@@ -5,20 +5,9 @@ const { createCanvas } = require("canvas");
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 
-// ====== UTILITAIRE : NORMALISATION POUR MATCH ROBUSTE ======
-function normalize(str = "") {
-  return str
-    .normalize("NFD")                    // décompose les accents
-    .replace(/[\u0300-\u036f]/g, "")     // enlève les accents
-    .toLowerCase()                       // minuscule
-    .replace(/\s+/g, " ")                // espaces multiples -> 1 espace
-    .trim();
-}
-
-// ==== PARSING ULTRA-ROBUSTE DES 4 SECTIONS ====
+// ====== PARSER MINIMAL (on ne le corrige pas tant que le log n'est pas récupéré) ======
 function parseSwot(rawText) {
   const lines = (rawText || "").split(/\r?\n/);
-
   const sections = {
     forces: [],
     faiblesses: [],
@@ -30,40 +19,51 @@ function parseSwot(rawText) {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
 
-    const norm = normalize(trimmed);
+    // Test simple — on verra après
+    if (/1\./.test(trimmed) && /force/i.test(trimmed)) current = "forces";
+    if (/2\./.test(trimmed) && /faibless/i.test(trimmed)) current = "faiblesses";
+    if (/3\./.test(trimmed) && /opportun/i.test(trimmed)) current = "opportunites";
+    if (/4\./.test(trimmed) && /menace/i.test(trimmed)) current = "menaces";
 
-    // --- Détection des titres de sections ---
-    // On détecte simplement : numéro + mot-clé, peu importe le reste
-    if (norm.startsWith("1. ") && norm.includes("forces")) {
-      current = "forces";
-      continue;
-    }
-    if (norm.startsWith("2. ") && norm.includes("faiblesses")) {
-      current = "faiblesses";
-      continue;
-    }
-    if (norm.startsWith("3. ") && (norm.includes("opportunites") || norm.includes("opportunite"))) {
-      current = "opportunites";
-      continue;
-    }
-    if (norm.startsWith("4. ") && norm.includes("menaces")) {
-      current = "menaces";
-      continue;
-    }
-
-    // --- Puces (lignes commençant par - ou •) ---
-    if (/^\s*[-•]/.test(trimmed) && current) {
-      const cleaned = trimmed.replace(/^\s*[-•]\s*/, "");
-      sections[current].push(cleaned);
+    if (trimmed.startsWith("-") && current) {
+      sections[current].push(trimmed.replace(/^-\s*/, ""));
     }
   }
 
   return sections;
 }
 
-// ==== RENDU SWOT EN PNG ====
+// ====== LOG ULTRA DÉTAILLÉ (clé du debugging) ======
+function logReceived(swotText) {
+  console.log("===========================================");
+  console.log("=== TEXTE REÇU BRUT (affichage direct) ===");
+  console.log("===========================================");
+  console.log(swotText);
+
+  console.log("\n===========================================");
+  console.log("=== CODEPOINTS UNICODE (caractère par caractère) ===");
+  console.log("===========================================\n");
+
+  for (let i = 0; i < swotText.length; i++) {
+    const char = swotText[i];
+    const cp = swotText.codePointAt(i).toString(16).padStart(4, "0");
+
+    // On affiche caractères invisibles lisiblement
+    let display = char;
+    if (char === " ") display = "[SPACE]";
+    if (char === "\t") display = "[TAB]";
+    if (char === "\n") display = "[LF]";
+    if (char === "\r") display = "[CR]";
+    if (char.trim() === "") display = `[INVISIBLE:${cp}]`;
+
+    console.log(`${i}: '${display}' → U+${cp}`);
+  }
+
+  console.log("\n=== FIN DU LOG UNICODE ===\n");
+}
+
+// ====== RENDU PNG INCHANGÉ ======
 function drawSwotImage(swotText) {
   const width = 2000;
   const height = 2000;
@@ -137,14 +137,18 @@ function drawSwotImage(swotText) {
   return canvas.toBuffer("image/png");
 }
 
-// ==== ROUTE DE DEBUG POUR TESTER LE PARSING ====
+// ====== ROUTE DEBUG (affiche EXACTEMENT ce que tu envoies) ======
 app.post("/test-parsing", (req, res) => {
   const swotText = req.body.swotText || "";
+
+  // LOG DÉTAILLÉ
+  logReceived(swotText);
+
   const sections = parseSwot(swotText);
   res.json({ success: true, ...sections });
 });
 
-// ==== ROUTE PRINCIPALE ====
+// ====== ROUTE PRINCIPALE ======
 app.post("/render-swot", (req, res) => {
   try {
     const swotText = req.body.swotText;
