@@ -5,7 +5,9 @@ const { createCanvas } = require("canvas");
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 
-// ====== PARSER MINIMAL (on ne le corrige pas tant que le log n'est pas récupéré) ======
+// ========================================================
+// =========== PARSER SWOT ULTRA-TOLÉRANT =================
+// ========================================================
 function parseSwot(rawText) {
   const lines = (rawText || "").split(/\r?\n/);
   const sections = {
@@ -20,21 +22,41 @@ function parseSwot(rawText) {
   for (const line of lines) {
     const trimmed = line.trim();
 
-    // Test simple — on verra après
-    if (/1\./.test(trimmed) && /force/i.test(trimmed)) current = "forces";
-    if (/2\./.test(trimmed) && /faibless/i.test(trimmed)) current = "faiblesses";
-    if (/3\./.test(trimmed) && /opportun/i.test(trimmed)) current = "opportunites";
-    if (/4\./.test(trimmed) && /menace/i.test(trimmed)) current = "menaces";
+    // TITRES avec toute tolérance possible
+    if (/^1\.\s*forces?\s*[:\-]?/i.test(trimmed)) {
+      current = "forces";
+      continue;
+    }
+    if (/^2\.\s*faiblesses?\s*[:\-]?/i.test(trimmed)) {
+      current = "faiblesses";
+      continue;
+    }
+    if (
+      /^3\.\s*opportunités?\s*[:\-]?/i.test(trimmed) ||
+      /^3\.\s*opportunites?\s*[:\-]?/i.test(trimmed)
+    ) {
+      current = "opportunites";
+      continue;
+    }
+    if (/^4\.\s*menaces?\s*[:\-]?/i.test(trimmed)) {
+      current = "menaces";
+      continue;
+    }
 
-    if (trimmed.startsWith("-") && current) {
-      sections[current].push(trimmed.replace(/^-\s*/, ""));
+    // PUCE
+    if (/^[-•]/.test(trimmed) && current) {
+      sections[current].push(
+        trimmed.replace(/^[-•]\s*/, "")
+      );
     }
   }
 
   return sections;
 }
 
-// ====== LOG ULTRA DÉTAILLÉ (clé du debugging) ======
+// ========================================================
+// =========== LOG RECEIVED TEXT & CODEPOINTS =============
+// ========================================================
 function logReceived(swotText) {
   console.log("===========================================");
   console.log("=== TEXTE REÇU BRUT (affichage direct) ===");
@@ -49,7 +71,6 @@ function logReceived(swotText) {
     const char = swotText[i];
     const cp = swotText.codePointAt(i).toString(16).padStart(4, "0");
 
-    // On affiche caractères invisibles lisiblement
     let display = char;
     if (char === " ") display = "[SPACE]";
     if (char === "\t") display = "[TAB]";
@@ -63,7 +84,9 @@ function logReceived(swotText) {
   console.log("\n=== FIN DU LOG UNICODE ===\n");
 }
 
-// ====== RENDU PNG INCHANGÉ ======
+// ========================================================
+// =============== RENDU SWOT EN PNG =======================
+// ========================================================
 function drawSwotImage(swotText) {
   const width = 2000;
   const height = 2000;
@@ -81,8 +104,8 @@ function drawSwotImage(swotText) {
   const colors = {
     forces: "#e3f2fd",
     faiblesses: "#ffebee",
-    opportunites: "#03A333",
-    menaces: "#fffde7"
+    opportunites: "#c8e6c9",
+    menaces: "#fff9c4"
   };
 
   const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText || "");
@@ -137,18 +160,23 @@ function drawSwotImage(swotText) {
   return canvas.toBuffer("image/png");
 }
 
-// ====== ROUTE DEBUG (affiche EXACTEMENT ce que tu envoies) ======
+// ========================================================
+// ===================== ROUTE DEBUG ======================
+// ========================================================
 app.post("/test-parsing", (req, res) => {
   const swotText = req.body.swotText || "";
 
-  // LOG DÉTAILLÉ
+  // LOG COMPLET
   logReceived(swotText);
 
+  // PARSING
   const sections = parseSwot(swotText);
   res.json({ success: true, ...sections });
 });
 
-// ====== ROUTE PRINCIPALE ======
+// ========================================================
+// ==================== ROUTE PNG =========================
+// ========================================================
 app.post("/render-swot", (req, res) => {
   try {
     const swotText = req.body.swotText;
@@ -164,5 +192,7 @@ app.post("/render-swot", (req, res) => {
   }
 });
 
+// ========================================================
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log("🚀 SWOT Renderer ready on port", PORT));
+
