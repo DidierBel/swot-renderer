@@ -5,6 +5,16 @@ const { createCanvas } = require("canvas");
 const app = express();
 app.use(bodyParser.json({ limit: "5mb" }));
 
+// ====== UTILITAIRE : NORMALISATION POUR MATCH ROBUSTE ======
+function normalize(str = "") {
+  return str
+    .normalize("NFD")                    // décompose les accents
+    .replace(/[\u0300-\u036f]/g, "")     // enlève les accents
+    .toLowerCase()                       // minuscule
+    .replace(/\s+/g, " ")                // espaces multiples -> 1 espace
+    .trim();
+}
+
 // ==== PARSING ULTRA-ROBUSTE DES 4 SECTIONS ====
 function parseSwot(rawText) {
   const lines = (rawText || "").split(/\r?\n/);
@@ -22,27 +32,31 @@ function parseSwot(rawText) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Titres des sections — robustes, acceptent ":", BOM, espaces invisibles, etc.
-    if (/^[^\S\r\n]*1\.\s*Forces\s*:?\s*$/i.test(trimmed)) {
+    const norm = normalize(trimmed);
+
+    // --- Détection des titres de sections ---
+    // On détecte simplement : numéro + mot-clé, peu importe le reste
+    if (norm.startsWith("1. ") && norm.includes("forces")) {
       current = "forces";
       continue;
     }
-    if (/^[^\S\r\n]*2\.\s*Faiblesses\s*:?\s*$/i.test(trimmed)) {
+    if (norm.startsWith("2. ") && norm.includes("faiblesses")) {
       current = "faiblesses";
       continue;
     }
-    if (/^[^\S\r\n]*3\.\s*(Opportunités|Opportunites)\s*:?\s*$/i.test(trimmed)) {
+    if (norm.startsWith("3. ") && (norm.includes("opportunites") || norm.includes("opportunite"))) {
       current = "opportunites";
       continue;
     }
-    if (/^[^\S\r\n]*4\.\s*Menaces\s*:?\s*$/i.test(trimmed)) {
+    if (norm.startsWith("4. ") && norm.includes("menaces")) {
       current = "menaces";
       continue;
     }
 
-    // Puces
-    if (trimmed.startsWith("-") && current) {
-      sections[current].push(trimmed.replace(/^-\s*/, ""));
+    // --- Puces (lignes commençant par - ou •) ---
+    if (/^\s*[-•]/.test(trimmed) && current) {
+      const cleaned = trimmed.replace(/^\s*[-•]\s*/, "");
+      sections[current].push(cleaned);
     }
   }
 
@@ -141,6 +155,7 @@ app.post("/render-swot", (req, res) => {
 
     res.json({ success: true, png_base64: b64 });
   } catch (e) {
+    console.error(e);
     res.status(500).json({ error: e.message });
   }
 });
