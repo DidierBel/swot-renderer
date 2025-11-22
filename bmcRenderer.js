@@ -1,23 +1,24 @@
-// Génération d'un Business Model Canvas en 9 blocs avec pictos line-art
+// Génération du Business Model Canvas (BMC)
+// 9 blocs, icons line art, Brush Script, layout personnalisé
 
 const { createCanvas, registerFont } = require("canvas");
 const path = require("path");
 
-// ==============================================
-//   POLICE Brush Script MT (optionnel)
-// ==============================================
+// Charger Brush Script MT
 try {
   registerFont(path.join(__dirname, "fonts", "BrushScriptMT.ttf"), {
     family: "Brush Script MT",
   });
   console.log("Police Brush Script MT chargée (BMC)");
 } catch (e) {
-  console.warn("⚠️ Impossible de charger Brush Script MT (BMC) – fallback.");
+  console.warn("⚠️ Brush Script MT introuvable — fallback");
 }
 
-// ==============================================
-//   HELPERS : RECTANGLE ARRONDI
-// ==============================================
+// =====================================================================================
+// HELPERS
+// =====================================================================================
+
+// Rectangle arrondi
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -32,19 +33,20 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// ==============================================
-//   HELPERS : PICTOGRAMMES LINE-ART
-// ==============================================
+
+// =====================================================================================
+//  ICONES LINE ART
+// =====================================================================================
 function drawIcon(ctx, type, cx, cy) {
+
   ctx.save();
-  ctx.strokeStyle = "#888888";
+  ctx.strokeStyle = "#888";
   ctx.lineWidth = 3;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
   switch (type) {
-    case "partners": {
-      // Deux mains qui se serrent
+    case "partners":
       ctx.beginPath();
       ctx.moveTo(cx - 35, cy + 10);
       ctx.lineTo(cx - 10, cy - 10);
@@ -57,9 +59,8 @@ function drawIcon(ctx, type, cx, cy) {
       ctx.arc(cx + 25, cy - 25, 10, 0, Math.PI * 2);
       ctx.stroke();
       break;
-    }
+
     case "activities": {
-      // Engrenage simple
       const r = 18;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -67,39 +68,26 @@ function drawIcon(ctx, type, cx, cy) {
 
       for (let i = 0; i < 8; i++) {
         const angle = (i * Math.PI * 2) / 8;
-        const x1 = cx + (r + 2) * Math.cos(angle);
-        const y1 = cy + (r + 2) * Math.sin(angle);
-        const x2 = cx + (r + 10) * Math.cos(angle);
-        const y2 = cy + (r + 10) * Math.sin(angle);
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
+        ctx.moveTo(cx + (r + 2) * Math.cos(angle), cy + (r + 2) * Math.sin(angle));
+        ctx.lineTo(cx + (r + 10) * Math.cos(angle), cy + (r + 10) * Math.sin(angle));
         ctx.stroke();
       }
       break;
     }
-    case "resources": {
-      // Boîte / cube
+
+    case "resources":
       ctx.beginPath();
       ctx.rect(cx - 25, cy - 18, 50, 30);
       ctx.stroke();
-
       ctx.beginPath();
       ctx.moveTo(cx - 25, cy - 18);
       ctx.lineTo(cx, cy - 32);
       ctx.lineTo(cx + 25, cy - 18);
       ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(cx + 25, cy - 18);
-      ctx.lineTo(cx + 25, cy + 12);
-      ctx.lineTo(cx, cy);
-      ctx.lineTo(cx, cy - 32);
-      ctx.stroke();
       break;
-    }
-    case "value": {
-      // Diamant
+
+    case "value":
       ctx.beginPath();
       ctx.moveTo(cx, cy - 25);
       ctx.lineTo(cx + 25, cy);
@@ -107,32 +95,18 @@ function drawIcon(ctx, type, cx, cy) {
       ctx.lineTo(cx - 25, cy);
       ctx.closePath();
       ctx.stroke();
+      break;
 
+    case "relations":
       ctx.beginPath();
-      ctx.moveTo(cx - 15, cy - 5);
-      ctx.lineTo(cx + 15, cy - 5);
+      ctx.rect(cx - 30, cy - 20, 40, 25);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.rect(cx + 5, cy - 10, 30, 20);
       ctx.stroke();
       break;
-    }
-    case "relations": {
-      // Deux bulles de dialogue
-      ctx.beginPath();
-      ctx.roundRect?.(cx - 30, cy - 20, 40, 25, 6) || ctx.rect(cx - 30, cy - 20, 40, 25);
-      ctx.stroke();
 
-      ctx.beginPath();
-      ctx.moveTo(cx - 10, cy + 5);
-      ctx.lineTo(cx - 5, cy + 10);
-      ctx.lineTo(cx, cy + 5);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.roundRect?.(cx + 5, cy - 10, 30, 20, 6) || ctx.rect(cx + 5, cy - 10, 30, 20);
-      ctx.stroke();
-      break;
-    }
-    case "channels": {
-      // Mégaphone
+    case "channels":
       ctx.beginPath();
       ctx.moveTo(cx - 20, cy);
       ctx.lineTo(cx - 5, cy - 10);
@@ -141,36 +115,25 @@ function drawIcon(ctx, type, cx, cy) {
       ctx.lineTo(cx - 5, cy + 10);
       ctx.closePath();
       ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(cx - 20, cy);
-      ctx.lineTo(cx - 25, cy + 12);
-      ctx.stroke();
       break;
-    }
-    case "segments": {
-      // 3 silhouettes
-      const r = 8;
-      const offset = 15;
-      for (let i = -1; i <= 1; i++) {
-        const x = cx + i * offset;
-        ctx.beginPath();
-        ctx.arc(x, cy - 8, r, 0, Math.PI * 2);
-        ctx.stroke();
 
+    case "segments":
+      for (let i = -1; i <= 1; i++) {
+        const x = cx + i * 18;
         ctx.beginPath();
-        ctx.moveTo(x, cy + r);
-        ctx.lineTo(x, cy + r + 14);
+        ctx.arc(x, cy - 8, 9, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, cy + 1);
+        ctx.lineTo(x, cy + 16);
         ctx.stroke();
       }
       break;
-    }
-    case "costs": {
-      // Symbole € stylisé
+
+    case "costs":
       ctx.beginPath();
       ctx.arc(cx + 5, cy, 20, 0.3, Math.PI * 1.3);
       ctx.stroke();
-
       ctx.beginPath();
       ctx.moveTo(cx - 10, cy - 10);
       ctx.lineTo(cx + 10, cy - 10);
@@ -178,57 +141,54 @@ function drawIcon(ctx, type, cx, cy) {
       ctx.lineTo(cx + 8, cy + 10);
       ctx.stroke();
       break;
-    }
-    case "revenues": {
-      // Sac d'argent simplifié
+
+    case "revenues":
       ctx.beginPath();
       ctx.moveTo(cx, cy - 20);
-      ctx.lineTo(cx - 15, cy - 5);
-      ctx.lineTo(cx - 20, cy + 15);
-      ctx.lineTo(cx + 20, cy + 15);
-      ctx.lineTo(cx + 15, cy - 5);
+      ctx.lineTo(cx - 18, cy + 12);
+      ctx.lineTo(cx + 18, cy + 12);
       ctx.closePath();
       ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(cx - 8, cy - 8);
-      ctx.lineTo(cx + 8, cy - 8);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - 20);
-      ctx.lineTo(cx, cy - 28);
-      ctx.stroke();
-      break;
-    }
-    default:
       break;
   }
 
   ctx.restore();
 }
 
-// ==============================================
-//   RENDU DU BMC
-// ==============================================
+
+// =====================================================================================
+//   RENDERER PRINCIPAL BMC
+// =====================================================================================
 function drawBmcImage(bmc = {}) {
+
+  // 🔥 Harmonisation des clés : accepte snake_case ET camelCase
+  const data = {
+    proposition_valeur: bmc.proposition_valeur || bmc.propositionValeur || "",
+    segments_clientele: bmc.segments_clientele || bmc.segments || "",
+    canaux: bmc.canaux || "",
+    relation_client: bmc.relation_client || bmc.relationClient || "",
+    sources_revenus: bmc.sources_revenus || bmc.sourcesRevenus || "",
+    activites_cles: bmc.activites_cles || bmc.activitesCles || "",
+    ressources_cles: bmc.ressources_cles || bmc.ressourcesCles || "",
+    partenaires_cles: bmc.partenaires_cles || bmc.partenairesCles || "",
+    structure_couts: bmc.structure_couts || bmc.structureCouts || ""
+  };
+
   const width = 3000;
   const height = 2000;
 
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // Fond
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // Grille
+  // GRID
   const marginX = 80;
   const marginY = 80;
   const innerWidth = width - marginX * 2;
   const innerHeight = height - marginY * 2;
 
-  // 5 colonnes, 3 hauteurs (2 pour le haut, 1 pour le bas)
   const colWidth = innerWidth / 5;
   const blockHeight = innerHeight / 3;
 
@@ -236,186 +196,87 @@ function drawBmcImage(bmc = {}) {
   const midY = marginY + blockHeight;
   const bottomY = marginY + 2 * blockHeight;
 
+  const titleFont = 'bold 42px "Brush Script MT"';
+  const textFont = '28px "Brush Script MT"';
+  const lineHeight = 40;
+
   const lineColor = "#CCCCCC";
 
-  // Styles texte
-  const titleFont = 'bold 38px "Brush Script MT", cursive, sans-serif';
-  const textFont = '26px "Brush Script MT", cursive, sans-serif';
-  const lineHeight = 34;
-
   function drawBlock(x, y, w, h, title, content, iconType) {
-    // Contour
     ctx.save();
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = 3;
-    roundRect(ctx, x, y, w, h, 18);
+    roundRect(ctx, x, y, w, h, 22);
     ctx.stroke();
     ctx.restore();
 
-    // Titre
-    ctx.fillStyle = "#000000";
     ctx.font = titleFont;
-    ctx.textBaseline = "top";
-    ctx.fillText(title, x + 18, y + 18);
+    ctx.fillStyle = "#000";
+    ctx.fillText(title, x + 20, y + 20);
 
-    // Icône (en haut à droite)
     drawIcon(ctx, iconType, x + w - 60, y + 45);
 
-    // Texte
     ctx.font = textFont;
-
-    const textX = x + 20;
-    let cursorY = y + 18 + 40 + lineHeight; // titre + 1 interligne
-    const maxWidth = w - 40;
+    const textX = x + 25;
+    let cursorY = y + 120;
+    const maxWidth = w - 50;
 
     if (!content) return;
+    const lines = Array.isArray(content) ? content : content.split("\n");
 
-    const lines = content.split(/\r?\n/).filter(l => l.trim() !== "");
+    for (let raw of lines) {
+      raw = raw.trim();
+      if (!raw) continue;
 
-    function drawWrapped(line, isBulleted) {
-      const prefix = isBulleted ? "• " : "";
-      const words = (prefix + line.trim()).split(" ");
-      let current = "";
+      const isBullet = /^[-•]/.test(raw);
+      const clean = raw.replace(/^[-•]\s*/, "");
+
+      let words = clean.split(" ");
+      let current = (isBullet ? "• " : "");
 
       for (const w of words) {
-        const test = current ? current + " " + w : w;
+        const test = current + w + " ";
         if (ctx.measureText(test).width > maxWidth) {
           ctx.fillText(current, textX, cursorY);
           cursorY += lineHeight;
-          current = w;
+          current = (isBullet ? "• " : "") + w + " ";
         } else {
-          current = test;
+          current += w + " ";
         }
       }
-      if (current) {
-        ctx.fillText(current, textX, cursorY);
-        cursorY += lineHeight;
-      }
-    }
-
-    for (const raw of lines) {
-      const trimmed = raw.trim();
-      if (!trimmed) continue;
-      const isBullet = /^[-•]/.test(trimmed);
-      const text = trimmed.replace(/^[-•]\s*/, "");
-      drawWrapped(text, isBullet);
+      ctx.fillText(current, textX, cursorY);
+      cursorY += lineHeight;
     }
   }
 
-  // ------------------------------------------------------
-  //  Layout défini par toi :
-  //  Col 0: Partenaires clés (2 hauteurs)
-  //  Col 1: Activités clés (haut) / Ressources clés (bas)
-  //  Col 2: Proposition de valeur (2 hauteurs)
-  //  Col 3: Relation client (haut) / Canaux (bas)
-  //  Col 4: Segments de clientèle (2 hauteurs)
-  //
-  //  Bas : Structure de coûts (2,5 colonnes) + Sources de revenus (2,5 colonnes)
-  // ------------------------------------------------------
-
-  // Colonnes X
+  // LAYOUT EXACT demandé
   const col0 = marginX;
   const col1 = marginX + colWidth;
   const col2 = marginX + 2 * colWidth;
   const col3 = marginX + 3 * colWidth;
   const col4 = marginX + 4 * colWidth;
 
-  // Haut (double hauteur)
-  drawBlock(
-    col0,
-    topY,
-    colWidth,
-    blockHeight * 2,
-    "Partenaires clés",
-    bmc.partenaires_cles || "",
-    "partners"
-  );
+  drawBlock(col0, topY, colWidth, blockHeight * 2, "Partenaires Clés", data.partenaires_cles, "partners");
 
-  drawBlock(
-    col1,
-    topY,
-    colWidth,
-    blockHeight,
-    "Activités clés",
-    bmc.activites_cles || "",
-    "activities"
-  );
+  drawBlock(col1, topY, colWidth, blockHeight, "Activités Clés", data.activites_cles, "activities");
 
-  drawBlock(
-    col1,
-    midY,
-    colWidth,
-    blockHeight,
-    "Ressources clés",
-    bmc.ressources_cles || "",
-    "resources"
-  );
+  drawBlock(col1, midY, colWidth, blockHeight, "Ressources Clés", data.ressources_cles, "resources");
 
-  drawBlock(
-    col2,
-    topY,
-    colWidth,
-    blockHeight * 2,
-    "Proposition de valeur",
-    bmc.proposition_valeur || "",
-    "value"
-  );
+  drawBlock(col2, topY, colWidth, blockHeight * 2, "Proposition de Valeur", data.proposition_valeur, "value");
 
-  drawBlock(
-    col3,
-    topY,
-    colWidth,
-    blockHeight,
-    "Relation client",
-    bmc.relation_client || "",
-    "relations"
-  );
+  drawBlock(col3, topY, colWidth, blockHeight, "Relation Client", data.relation_client, "relations");
 
-  drawBlock(
-    col3,
-    midY,
-    colWidth,
-    blockHeight,
-    "Canaux",
-    bmc.canaux || "",
-    "channels"
-  );
+  drawBlock(col3, midY, colWidth, blockHeight, "Canaux", data.canaux, "channels");
 
-  drawBlock(
-    col4,
-    topY,
-    colWidth,
-    blockHeight * 2,
-    "Segments de clientèle",
-    bmc.segments_clientele || "",
-    "segments"
-  );
+  drawBlock(col4, topY, colWidth, blockHeight * 2, "Segments de Clientèle", data.segments_clientele, "segments");
 
   // Bas : 2,5 colonnes + 2,5 colonnes
-  const bottomWidthHalf = colWidth * 2.5;
-
-  drawBlock(
-    marginX,
-    bottomY,
-    bottomWidthHalf,
-    blockHeight,
-    "Structure de coûts",
-    bmc.structure_couts || "",
-    "costs"
-  );
-
-  drawBlock(
-    marginX + bottomWidthHalf,
-    bottomY,
-    bottomWidthHalf,
-    blockHeight,
-    "Sources de revenus",
-    bmc.sources_revenus || "",
-    "revenues"
-  );
+  const halfWidth = colWidth * 2.5;
+  drawBlock(marginX, bottomY, halfWidth, blockHeight, "Structure de Coûts", data.structure_couts, "costs");
+  drawBlock(marginX + halfWidth, bottomY, halfWidth, blockHeight, "Sources de Revenus", data.sources_revenus, "revenues");
 
   return canvas.toBuffer("image/png");
 }
 
-module.exports = {
-  drawBmcImage,
+
+module.exports = { drawBmcImage };
