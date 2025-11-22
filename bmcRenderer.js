@@ -1,24 +1,25 @@
-// Génération du Business Model Canvas (BMC)
-// 9 blocs, icons line art, Brush Script, layout personnalisé
+// ============================================================================
+//  Business Model Canvas Renderer (Layout 9 blocs + pictos line-art)
+// ============================================================================
 
 const { createCanvas, registerFont } = require("canvas");
 const path = require("path");
 
-// Charger Brush Script MT
+// ============================================================================
+//  CHARGEMENT DE LA POLICE Brush Script MT
+// ============================================================================
 try {
   registerFont(path.join(__dirname, "fonts", "BrushScriptMT.ttf"), {
     family: "Brush Script MT",
   });
   console.log("Police Brush Script MT chargée (BMC)");
 } catch (e) {
-  console.warn("⚠️ Brush Script MT introuvable — fallback");
+  console.warn("⚠️ Impossible de charger Brush Script MT – fallback.");
 }
 
-// =====================================================================================
-// HELPERS
-// =====================================================================================
-
-// Rectangle arrondi
+// ============================================================================
+//  RECTANGLE ARRONDI
+// ============================================================================
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -33,20 +34,19 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-
-// =====================================================================================
-//  ICONES LINE ART
-// =====================================================================================
+// ============================================================================
+//  PICTOGRAMMES LINE-ART
+// ============================================================================
 function drawIcon(ctx, type, cx, cy) {
-
   ctx.save();
-  ctx.strokeStyle = "#888";
+  ctx.strokeStyle = "#888888";
   ctx.lineWidth = 3;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
   switch (type) {
-    case "partners":
+    case "partners": {
+      // Deux mains qui se serrent
       ctx.beginPath();
       ctx.moveTo(cx - 35, cy + 10);
       ctx.lineTo(cx - 10, cy - 10);
@@ -59,13 +59,12 @@ function drawIcon(ctx, type, cx, cy) {
       ctx.arc(cx + 25, cy - 25, 10, 0, Math.PI * 2);
       ctx.stroke();
       break;
-
+    }
     case "activities": {
       const r = 18;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.stroke();
-
       for (let i = 0; i < 8; i++) {
         const angle = (i * Math.PI * 2) / 8;
         ctx.beginPath();
@@ -75,8 +74,7 @@ function drawIcon(ctx, type, cx, cy) {
       }
       break;
     }
-
-    case "resources":
+    case "resources": {
       ctx.beginPath();
       ctx.rect(cx - 25, cy - 18, 50, 30);
       ctx.stroke();
@@ -85,9 +83,15 @@ function drawIcon(ctx, type, cx, cy) {
       ctx.lineTo(cx, cy - 32);
       ctx.lineTo(cx + 25, cy - 18);
       ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + 25, cy - 18);
+      ctx.lineTo(cx + 25, cy + 12);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx, cy - 32);
+      ctx.stroke();
       break;
-
-    case "value":
+    }
+    case "value": {
       ctx.beginPath();
       ctx.moveTo(cx, cy - 25);
       ctx.lineTo(cx + 25, cy);
@@ -96,17 +100,22 @@ function drawIcon(ctx, type, cx, cy) {
       ctx.closePath();
       ctx.stroke();
       break;
-
-    case "relations":
+    }
+    case "relations": {
       ctx.beginPath();
       ctx.rect(cx - 30, cy - 20, 40, 25);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy + 5);
+      ctx.lineTo(cx - 5, cy + 10);
+      ctx.lineTo(cx, cy + 5);
       ctx.stroke();
       ctx.beginPath();
       ctx.rect(cx + 5, cy - 10, 30, 20);
       ctx.stroke();
       break;
-
-    case "channels":
+    }
+    case "channels": {
       ctx.beginPath();
       ctx.moveTo(cx - 20, cy);
       ctx.lineTo(cx - 5, cy - 10);
@@ -116,21 +125,23 @@ function drawIcon(ctx, type, cx, cy) {
       ctx.closePath();
       ctx.stroke();
       break;
-
-    case "segments":
+    }
+    case "segments": {
+      const r = 8;
+      const offset = 15;
       for (let i = -1; i <= 1; i++) {
-        const x = cx + i * 18;
+        const x = cx + i * offset;
         ctx.beginPath();
-        ctx.arc(x, cy - 8, 9, 0, Math.PI * 2);
+        ctx.arc(x, cy - 8, r, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(x, cy + 1);
-        ctx.lineTo(x, cy + 16);
+        ctx.moveTo(x, cy + r);
+        ctx.lineTo(x, cy + r + 14);
         ctx.stroke();
       }
       break;
-
-    case "costs":
+    }
+    case "costs": {
       ctx.beginPath();
       ctx.arc(cx + 5, cy, 20, 0.3, Math.PI * 1.3);
       ctx.stroke();
@@ -141,49 +152,38 @@ function drawIcon(ctx, type, cx, cy) {
       ctx.lineTo(cx + 8, cy + 10);
       ctx.stroke();
       break;
-
-    case "revenues":
+    }
+    case "revenues": {
       ctx.beginPath();
       ctx.moveTo(cx, cy - 20);
-      ctx.lineTo(cx - 18, cy + 12);
-      ctx.lineTo(cx + 18, cy + 12);
+      ctx.lineTo(cx - 15, cy - 5);
+      ctx.lineTo(cx - 20, cy + 15);
+      ctx.lineTo(cx + 20, cy + 15);
+      ctx.lineTo(cx + 15, cy - 5);
       ctx.closePath();
       ctx.stroke();
       break;
+    }
   }
 
   ctx.restore();
 }
 
-
-// =====================================================================================
-//   RENDERER PRINCIPAL BMC
-// =====================================================================================
+// ============================================================================
+//  RENDU DU BMC
+// ============================================================================
 function drawBmcImage(bmc = {}) {
-
-  // 🔥 Harmonisation des clés : accepte snake_case ET camelCase
-  const data = {
-    proposition_valeur: bmc.proposition_valeur || bmc.propositionValeur || "",
-    segments_clientele: bmc.segments_clientele || bmc.segments || "",
-    canaux: bmc.canaux || "",
-    relation_client: bmc.relation_client || bmc.relationClient || "",
-    sources_revenus: bmc.sources_revenus || bmc.sourcesRevenus || "",
-    activites_cles: bmc.activites_cles || bmc.activitesCles || "",
-    ressources_cles: bmc.ressources_cles || bmc.ressourcesCles || "",
-    partenaires_cles: bmc.partenaires_cles || bmc.partenairesCles || "",
-    structure_couts: bmc.structure_couts || bmc.structureCouts || ""
-  };
-
   const width = 3000;
   const height = 2000;
 
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
+  // Fond
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // GRID
+  // ESPACEMENT
   const marginX = 80;
   const marginY = 80;
   const innerWidth = width - marginX * 2;
@@ -196,87 +196,111 @@ function drawBmcImage(bmc = {}) {
   const midY = marginY + blockHeight;
   const bottomY = marginY + 2 * blockHeight;
 
-  const titleFont = 'bold 42px "Brush Script MT"';
-  const textFont = '28px "Brush Script MT"';
-  const lineHeight = 40;
-
   const lineColor = "#CCCCCC";
 
+  // STYLES
+  const titleFont = 'bold 38px "Brush Script MT", cursive, sans-serif';
+  const textFont = '26px "Brush Script MT", cursive, sans-serif';
+  const lineHeight = 34;
+
+  // ========================================================
+  //  🔥 MAPPING → correspond EXACTEMENT à ton JSON n8n
+  // ========================================================
+  const partenaires    = bmc.partenairesCles     || "";
+  const activites      = bmc.activitesCles       || "";
+  const ressources     = bmc.ressourcesCles      || "";
+  const proposition    = bmc.propositionValeur   || "";
+  const relationClient = bmc.relationClient      || "";
+  const canaux         = bmc.canaux              || "";
+  const segments       = bmc.segments            || "";
+  const structure      = bmc.structureCouts      || "";
+  const revenus        = bmc.sourcesRevenus      || "";
+
+  // ========================================================
+  //  Fonction de dessin de bloc
+  // ========================================================
   function drawBlock(x, y, w, h, title, content, iconType) {
     ctx.save();
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = 3;
-    roundRect(ctx, x, y, w, h, 22);
+    roundRect(ctx, x, y, w, h, 18);
     ctx.stroke();
     ctx.restore();
 
-    ctx.font = titleFont;
     ctx.fillStyle = "#000";
-    ctx.fillText(title, x + 20, y + 20);
+    ctx.font = titleFont;
+    ctx.textBaseline = "top";
+    ctx.fillText(title, x + 18, y + 18);
 
     drawIcon(ctx, iconType, x + w - 60, y + 45);
 
     ctx.font = textFont;
-    const textX = x + 25;
-    let cursorY = y + 120;
-    const maxWidth = w - 50;
+    const textX = x + 20;
+    let cursorY = y + 18 + 40 + lineHeight;
 
     if (!content) return;
-    const lines = Array.isArray(content) ? content : content.split("\n");
 
-    for (let raw of lines) {
-      raw = raw.trim();
-      if (!raw) continue;
+    const lines = Array.isArray(content)
+      ? content
+      : content.split(/\r?\n/);
 
-      const isBullet = /^[-•]/.test(raw);
-      const clean = raw.replace(/^[-•]\s*/, "");
+    const maxWidth = w - 40;
 
-      let words = clean.split(" ");
-      let current = (isBullet ? "• " : "");
+    function wrap(line, isBullet) {
+      const words = (isBullet ? "• " : "" + line).split(" ");
+      let current = "";
 
       for (const w of words) {
-        const test = current + w + " ";
+        const test = current ? current + " " + w : w;
+
         if (ctx.measureText(test).width > maxWidth) {
           ctx.fillText(current, textX, cursorY);
           cursorY += lineHeight;
-          current = (isBullet ? "• " : "") + w + " ";
+          current = w;
         } else {
-          current += w + " ";
+          current = test;
         }
       }
-      ctx.fillText(current, textX, cursorY);
-      cursorY += lineHeight;
+
+      if (current) {
+        ctx.fillText(current, textX, cursorY);
+        cursorY += lineHeight;
+      }
+    }
+
+    for (let raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      const bullet = /^[-•]/.test(line);
+      const text = line.replace(/^[-•]\s*/, "");
+      wrap(text, bullet);
     }
   }
 
-  // LAYOUT EXACT demandé
+  // ========================================================
+  //  ⬛ LAYOUT EXACT demandé
+  // ========================================================
   const col0 = marginX;
   const col1 = marginX + colWidth;
-  const col2 = marginX + 2 * colWidth;
-  const col3 = marginX + 3 * colWidth;
-  const col4 = marginX + 4 * colWidth;
+  const col2 = marginX + colWidth * 2;
+  const col3 = marginX + colWidth * 3;
+  const col4 = marginX + colWidth * 4;
 
-  drawBlock(col0, topY, colWidth, blockHeight * 2, "Partenaires Clés", data.partenaires_cles, "partners");
+  // Haut
+  drawBlock(col0, topY, colWidth, blockHeight * 2, "Partenaires clés", partenaires, "partners");
+  drawBlock(col1, topY, colWidth, blockHeight, "Activités clés", activites, "activities");
+  drawBlock(col1, midY, colWidth, blockHeight, "Ressources clés", ressources, "resources");
+  drawBlock(col2, topY, colWidth, blockHeight * 2, "Proposition de valeur", proposition, "value");
+  drawBlock(col3, topY, colWidth, blockHeight, "Relation client", relationClient, "relations");
+  drawBlock(col3, midY, colWidth, blockHeight, "Canaux", canaux, "channels");
+  drawBlock(col4, topY, colWidth, blockHeight * 2, "Segments de clientèle", segments, "segments");
 
-  drawBlock(col1, topY, colWidth, blockHeight, "Activités Clés", data.activites_cles, "activities");
-
-  drawBlock(col1, midY, colWidth, blockHeight, "Ressources Clés", data.ressources_cles, "resources");
-
-  drawBlock(col2, topY, colWidth, blockHeight * 2, "Proposition de Valeur", data.proposition_valeur, "value");
-
-  drawBlock(col3, topY, colWidth, blockHeight, "Relation Client", data.relation_client, "relations");
-
-  drawBlock(col3, midY, colWidth, blockHeight, "Canaux", data.canaux, "channels");
-
-  drawBlock(col4, topY, colWidth, blockHeight * 2, "Segments de Clientèle", data.segments_clientele, "segments");
-
-  // Bas : 2,5 colonnes + 2,5 colonnes
-  const halfWidth = colWidth * 2.5;
-  drawBlock(marginX, bottomY, halfWidth, blockHeight, "Structure de Coûts", data.structure_couts, "costs");
-  drawBlock(marginX + halfWidth, bottomY, halfWidth, blockHeight, "Sources de Revenus", data.sources_revenus, "revenues");
+  // Bas (2,5 colonnes)
+  const widthHalf = colWidth * 2.5;
+  drawBlock(marginX, bottomY, widthHalf, blockHeight, "Structure de coûts", structure, "costs");
+  drawBlock(marginX + widthHalf, bottomY, widthHalf, blockHeight, "Sources de revenus", revenus, "revenues");
 
   return canvas.toBuffer("image/png");
 }
-
 
 module.exports = { drawBmcImage };
