@@ -47,7 +47,10 @@ function parseSwot(rawText) {
     if (/^2\.\s*faiblesses?\s*[:\-]?/i.test(trimmed)) {
       current = "faiblesses"; continue;
     }
-    if (/^3\.\s*opportunités?\s*[:\-]?/i.test(trimmed) || /^3\.\s*opportunites?\s*[:\-]?/i.test(trimmed)) {
+    if (
+      /^3\.\s*opportunités?\s*[:\-]?/i.test(trimmed) ||
+      /^3\.\s*opportunites?\s*[:\-]?/i.test(trimmed)
+    ) {
       current = "opportunites"; continue;
     }
     if (/^4\.\s*menaces?\s*[:\-]?/i.test(trimmed)) {
@@ -98,12 +101,12 @@ function drawSwotImage(swotText) {
   const boxWidth = (width - margin * 3) / 2;
   const boxHeight = (height - margin * 3) / 2;
 
-  // 🎨 COULEURS DEMANDÉES
+  // 🎨 COULEURS (Menaces mis à jour → Rouge capucine)
   const colors = {
     forces: "#00e091",       // Forest Green
     faiblesses: "#ffd800",   // Yellow
     opportunites: "#a998ee", // Lavender
-    menaces: "##FF5E4D"       // Rouge Capucine
+    menaces: "#FF5E4D"       // Rouge capucine 🔥
   };
 
   const radius = 35;
@@ -111,7 +114,7 @@ function drawSwotImage(swotText) {
   const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText || "");
 
   function drawBox(title, textLines, x, y, color) {
-    // Fond arrondi
+    // Fond
     ctx.fillStyle = color;
     roundRect(ctx, x, y, boxWidth, boxHeight, radius);
     ctx.fill();
@@ -131,7 +134,9 @@ function drawSwotImage(swotText) {
     // Texte
     ctx.font = "30px \"Brush Script MT\", cursive, sans-serif";
     const lineHeight = 42;
-    let cursorY = y + 24 + 40 + lineHeight * 2;
+
+    // Deux interlignes après le titre
+    let cursorY = y + 24 + 40 + (lineHeight * 2);
 
     const maxWidth = boxWidth - 70;
     const bulletX = x + 32;
@@ -143,6 +148,7 @@ function drawSwotImage(swotText) {
 
       for (const word of words) {
         const test = currentLine ? currentLine + " " + word : word;
+
         if (ctx.measureText(test).width > maxWidth) {
           ctx.fillText(currentLine, textX, cursorY);
           cursorY += lineHeight;
