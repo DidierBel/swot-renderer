@@ -1,6 +1,6 @@
 // ======================
-// BMC RENDERER FINAL
-// Compatible avec ton JSON EXACT
+// BMC RENDERER – VERSION AMÉLIORÉE
+// Icônes stylisés + hanging indent
 // ======================
 
 const { createCanvas, registerFont } = require("canvas");
@@ -33,76 +33,122 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+
 // ----------------------
-// Icônes
+// Icônes stylisés, plus jolis
 // ----------------------
 function drawIcon(ctx, type, cx, cy) {
   ctx.save();
-  ctx.strokeStyle = "#888";
+  ctx.strokeStyle = "#666";
   ctx.lineWidth = 3;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
   switch (type) {
     case "partners":
+      // poignée de main stylisée
       ctx.beginPath();
-      ctx.moveTo(cx - 35, cy + 10);
-      ctx.lineTo(cx - 10, cy - 10);
-      ctx.lineTo(cx + 10, cy + 10);
-      ctx.lineTo(cx + 35, cy - 10);
+      ctx.moveTo(cx - 28, cy + 6);
+      ctx.lineTo(cx - 8, cy - 8);
+      ctx.lineTo(cx + 8, cy + 6);
+      ctx.lineTo(cx + 28, cy - 8);
       ctx.stroke();
       break;
 
     case "activities":
+      // engrenage très simple
       ctx.beginPath();
-      ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
       ctx.stroke();
+      for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI * 2) / 6;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * 18, cy + Math.sin(a) * 18);
+        ctx.lineTo(cx + Math.cos(a) * 26, cy + Math.sin(a) * 26);
+        ctx.stroke();
+      }
       break;
 
     case "resources":
-      ctx.strokeRect(cx - 20, cy - 15, 40, 30);
+      // cube isométrique stylisé
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 18);
+      ctx.lineTo(cx + 22, cy - 6);
+      ctx.lineTo(cx + 22, cy + 18);
+      ctx.lineTo(cx, cy + 6);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 18);
+      ctx.lineTo(cx - 22, cy - 6);
+      ctx.lineTo(cx - 22, cy + 18);
+      ctx.lineTo(cx, cy + 6);
+      ctx.stroke();
       break;
 
     case "value":
+      // diamant / valeur
       ctx.beginPath();
-      ctx.moveTo(cx, cy - 25);
-      ctx.lineTo(cx + 25, cy);
-      ctx.lineTo(cx, cy + 25);
-      ctx.lineTo(cx - 25, cy);
+      ctx.moveTo(cx, cy - 20);
+      ctx.lineTo(cx + 22, cy);
+      ctx.lineTo(cx, cy + 20);
+      ctx.lineTo(cx - 22, cy);
       ctx.closePath();
       ctx.stroke();
       break;
 
     case "relations":
-      ctx.strokeRect(cx - 30, cy - 20, 50, 30);
+      // deux bulles de dialogue arrondies
+      ctx.beginPath();
+      roundRect(ctx, cx - 35, cy - 20, 45, 28, 8);
+      ctx.stroke();
+      ctx.beginPath();
+      roundRect(ctx, cx + -5, cy - 10, 35, 22, 8);
+      ctx.stroke();
       break;
 
     case "channels":
+      // haut-parleur
       ctx.beginPath();
-      ctx.moveTo(cx - 20, cy);
-      ctx.lineTo(cx + 20, cy - 10);
-      ctx.lineTo(cx + 20, cy + 10);
+      ctx.moveTo(cx - 20, cy - 10);
+      ctx.lineTo(cx + 8, cy - 4);
+      ctx.lineTo(cx + 8, cy + 4);
+      ctx.lineTo(cx - 20, cy + 10);
       ctx.closePath();
       ctx.stroke();
       break;
 
     case "segments":
-      ctx.beginPath();
-      ctx.arc(cx, cy - 10, 12, 0, Math.PI * 2);
-      ctx.stroke();
+      // trois silhouettes minimalistes
+      for (let i = -1; i <= 1; i++) {
+        const x = cx + i * 18;
+        ctx.beginPath();
+        ctx.arc(x, cy - 8, 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, cy + 2);
+        ctx.lineTo(x, cy + 16);
+        ctx.stroke();
+      }
       break;
 
     case "costs":
       ctx.beginPath();
-      ctx.arc(cx, cy, 20, Math.PI * 0.2, Math.PI * 1.25);
+      ctx.arc(cx, cy, 20, 0.3, Math.PI * 1.3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy - 12);
+      ctx.lineTo(cx + 12, cy - 12);
+      ctx.moveTo(cx - 12, cy + 12);
+      ctx.lineTo(cx + 10, cy + 12);
       ctx.stroke();
       break;
 
     case "revenues":
       ctx.beginPath();
-      ctx.moveTo(cx, cy - 20);
-      ctx.lineTo(cx - 20, cy + 15);
-      ctx.lineTo(cx + 20, cy + 15);
+      ctx.moveTo(cx, cy - 22);
+      ctx.lineTo(cx - 18, cy + 14);
+      ctx.lineTo(cx + 18, cy + 14);
       ctx.closePath();
       ctx.stroke();
       break;
@@ -111,63 +157,66 @@ function drawIcon(ctx, type, cx, cy) {
   ctx.restore();
 }
 
+
 // ----------------------
-// Helper : dessiner un bloc BMC
+// drawBlock : maintenant avec hanging indent
 // ----------------------
 function drawBlock(ctx, x, y, w, h, title, values, iconType) {
   ctx.save();
 
-  // Cadre
+  // bloc
   ctx.strokeStyle = "#CCCCCC";
   ctx.lineWidth = 3;
-  roundRect(ctx, x, y, w, h, 18);
+  roundRect(ctx, x, y, w, h, 20);
   ctx.stroke();
 
-  // Titre
+  // titre
   ctx.fillStyle = "#000";
-  ctx.font = 'bold 38px "Brush Script MT", cursive';
+  ctx.font = 'bold 40px "Brush Script MT", cursive';
   ctx.fillText(title, x + 20, y + 20);
 
-  // Icône
+  // icône
   drawIcon(ctx, iconType, x + w - 60, y + 45);
 
-  // Texte
-  ctx.font = '26px "Brush Script MT", cursive';
+  // texte
+  ctx.font = '28px "Brush Script MT", cursive';
 
   if (!Array.isArray(values)) values = [];
 
-  const textX = x + 20;
-  let cursorY = y + 90;
-  const maxWidth = w - 40;
-  const lineHeight = 34;
+  const bulletX = x + 20;
+  const textX = x + 50;      // texte aligné ici (hanging indent)
+  const maxWidth = w - 60;
+  const lineHeight = 36;
+  let cursorY = y + 95;
 
+  // rendre les puces jolies + indent correct
   for (const item of values) {
-    const line = "• " + item;
-    const words = line.split(" ");
-    let curr = "";
+    ctx.fillText("•", bulletX, cursorY);
 
-    for (const w2 of words) {
-      const test = curr ? curr + " " + w2 : w2;
+    const words = item.split(" ");
+    let current = "";
+
+    for (const word of words) {
+      const test = current ? current + " " + word : word;
       if (ctx.measureText(test).width > maxWidth) {
-        ctx.fillText(curr, textX, cursorY);
+        ctx.fillText(current, textX, cursorY);
         cursorY += lineHeight;
-        curr = w2;
+        current = word;
       } else {
-        curr = test;
+        current = test;
       }
     }
 
-    if (curr) {
-      ctx.fillText(curr, textX, cursorY);
-      cursorY += lineHeight;
-    }
+    ctx.fillText(current, textX, cursorY);
+    cursorY += lineHeight;
   }
 
   ctx.restore();
 }
 
+
 // ----------------------
-// Rendu principal
+// Rendu principal du BMC
 // ----------------------
 function drawBmcImage(bmc) {
   const width = 3000;
@@ -189,16 +238,14 @@ function drawBmcImage(bmc) {
 
   const topY = marginY;
   const midY = marginY + blockHeight;
-  const bottomY = marginY + blockHeight * 2;
+  const bottomY = marginY + 2 * blockHeight;
 
-  // Colonnes
   const col0 = marginX;
   const col1 = marginX + colWidth;
   const col2 = marginX + 2 * colWidth;
   const col3 = marginX + 3 * colWidth;
   const col4 = marginX + 4 * colWidth;
 
-  // Blocs hauts (2 hauteurs ou 1+1)
   drawBlock(ctx, col0, topY, colWidth, blockHeight * 2, "Partenaires clés", bmc.partenairesCles, "partners");
   drawBlock(ctx, col1, topY, colWidth, blockHeight, "Activités clés", bmc.activitesCles, "activities");
   drawBlock(ctx, col1, midY, colWidth, blockHeight, "Ressources clés", bmc.ressourcesCles, "resources");
@@ -207,7 +254,6 @@ function drawBmcImage(bmc) {
   drawBlock(ctx, col3, midY, colWidth, blockHeight, "Canaux", bmc.canaux, "channels");
   drawBlock(ctx, col4, topY, colWidth, blockHeight * 2, "Segments de clientèle", bmc.segments, "segments");
 
-  // Bas : 2,5 colonnes + 2,5 colonnes
   const bottomWidthHalf = colWidth * 2.5;
 
   drawBlock(ctx, col0, bottomY, bottomWidthHalf, blockHeight, "Structure de coûts", bmc.structureCouts, "costs");
