@@ -103,7 +103,7 @@ function drawSwotImage(swotText) {
     forces: "#00e091",       // Forest Green
     faiblesses: "#ffd800",   // Yellow
     opportunites: "#a998ee", // Lavender
-    menaces: "#ca2530"       // Scarlet
+    menaces: "##FF5E4D"       // Rouge Capucine
   };
 
   const radius = 35;
