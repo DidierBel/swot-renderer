@@ -1,213 +1,52 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const { createCanvas, registerFont } = require("canvas");
-const path = require("path");
+
+// Import des 2 modules Renderer
+const { drawSwotImage } = require("./swotRenderer");
+const { drawBmcImage } = require("./bmcRenderer");
 
 const app = express();
 app.use(bodyParser.json({ limit: "20mb" }));
 
 // ========================================================
-// == CHARGEMENT DE LA POLICE Brush Script MT (optionnel) ==
-// ========================================================
-try {
-  registerFont(path.join(__dirname, "fonts", "BrushScriptMT.ttf"), {
-    family: "Brush Script MT"
-  });
-  console.log("Police Brush Script MT chargée");
-} catch (e) {
-  console.warn("⚠️ Impossible de charger Brush Script MT en local – fallback sur la police système.");
-}
-
-// ========================================================
-// =========== PARSER SWOT CORRIGÉ & ROBUSTE ==============
-// ========================================================
-function parseSwot(rawText) {
-  let txt = (rawText || "")
-    .replace(/^[=\s]+/, "")
-    .replace(/\r/g, "");
-
-  const lines = txt.split("\n");
-
-  const sections = {
-    forces: [],
-    faiblesses: [],
-    opportunites: [],
-    menaces: []
-  };
-
-  let current = null;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    if (/^1\.\s*forces?\s*[:\-]?/i.test(trimmed)) {
-      current = "forces"; continue;
-    }
-    if (/^2\.\s*faiblesses?\s*[:\-]?/i.test(trimmed)) {
-      current = "faiblesses"; continue;
-    }
-    if (
-      /^3\.\s*opportunités?\s*[:\-]?/i.test(trimmed) ||
-      /^3\.\s*opportunites?\s*[:\-]?/i.test(trimmed)
-    ) {
-      current = "opportunites"; continue;
-    }
-    if (/^4\.\s*menaces?\s*[:\-]?/i.test(trimmed)) {
-      current = "menaces"; continue;
-    }
-
-    if (/^\s*[-•]/.test(trimmed) && current) {
-      sections[current].push(
-        trimmed.replace(/^\s*[-•]\s*/, "")
-      );
-    }
-  }
-
-  return sections;
-}
-
-// ========================================================
-// =============== OUTIL : RECTANGLE ARRONDI ==============
-// ========================================================
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
-// ========================================================
-// ================= RENDU DE L’IMAGE =====================
-// ========================================================
-function drawSwotImage(swotText) {
-  const width = 2000;
-  const height = 2000;
-
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, width, height);
-
-  const margin = 80;
-  const boxWidth = (width - margin * 3) / 2;
-  const boxHeight = (height - margin * 3) / 2;
-
-  // 🎨 COULEURS (Menaces mis à jour → Rouge capucine)
-  const colors = {
-    forces: "#00e091",       // Forest Green
-    faiblesses: "#ffd800",   // Yellow
-    opportunites: "#a998ee", // Lavender
-    menaces: "#FF5E4D"       // Rouge capucine 🔥
-  };
-
-  const radius = 35;
-
-  const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText || "");
-
-  function drawBox(title, textLines, x, y, color) {
-    // Fond
-    ctx.fillStyle = color;
-    roundRect(ctx, x, y, boxWidth, boxHeight, radius);
-    ctx.fill();
-
-    // Bordure
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 4;
-    roundRect(ctx, x, y, boxWidth, boxHeight, radius);
-    ctx.stroke();
-
-    // Titre
-    ctx.fillStyle = "#000";
-    ctx.font = "bold 40px \"Brush Script MT\", cursive, sans-serif";
-    ctx.textBaseline = "top";
-    ctx.fillText(title, x + 24, y + 24);
-
-    // Texte
-    ctx.font = "30px \"Brush Script MT\", cursive, sans-serif";
-    const lineHeight = 42;
-
-    // Deux interlignes après le titre
-    let cursorY = y + 24 + 40 + (lineHeight * 2);
-
-    const maxWidth = boxWidth - 70;
-    const bulletX = x + 32;
-    const textX = x + 60;
-
-    function wrapBulletLine(text) {
-      const words = text.split(" ");
-      let currentLine = "";
-
-      for (const word of words) {
-        const test = currentLine ? currentLine + " " + word : word;
-
-        if (ctx.measureText(test).width > maxWidth) {
-          ctx.fillText(currentLine, textX, cursorY);
-          cursorY += lineHeight;
-          currentLine = word;
-        } else {
-          currentLine = test;
-        }
-      }
-
-      if (currentLine) {
-        ctx.fillText(currentLine, textX, cursorY);
-        cursorY += lineHeight;
-      }
-    }
-
-    // Liste à puces
-    for (const line of textLines) {
-      ctx.fillText("•", bulletX, cursorY);
-      wrapBulletLine(line);
-    }
-  }
-
-  drawBox("Forces", forces, margin, margin, colors.forces);
-  drawBox("Faiblesses", faiblesses, margin * 2 + boxWidth, margin, colors.faiblesses);
-  drawBox("Opportunités", opportunites, margin, margin * 2 + boxHeight, colors.opportunites);
-  drawBox("Menaces", menaces, margin * 2 + boxWidth, margin * 2 + boxHeight, colors.menaces);
-
-  return canvas.toBuffer("image/png");
-}
-
-// ========================================================
-// ================= ROUTE DE DEBUG =======================
-// ========================================================
-app.post("/test-parsing", (req, res) => {
-  res.json({
-    success: true,
-    ...parseSwot(req.body.swotText || "")
-  });
-});
-
-// ========================================================
-// ================= ROUTE PRINCIPALE =====================
+// 🔵 ROUTE SWOT
 // ========================================================
 app.post("/render-swot", (req, res) => {
   try {
-    if (!req.body.swotText) {
-      return res.status(400).json({ error: "swotText manquant" });
-    }
+    const swotText = req.body.swotText;
+    if (!swotText) return res.status(400).json({ error: "swotText manquant" });
 
-    const png = drawSwotImage(req.body.swotText);
+    const png = drawSwotImage(swotText);
     const b64 = png.toString("base64");
 
     res.json({ success: true, png_base64: b64 });
-  } catch (e) {
-    console.error("Erreur render-swot :", e);
-    res.status(500).json({ error: e.message });
+
+  } catch (err) {
+    console.error("Erreur SWOT:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
 // ========================================================
+// 🟣 ROUTE BMC
+// ========================================================
+app.post("/render-bmc", (req, res) => {
+  try {
+    const bmc = req.body.bmc;
+    if (!bmc) return res.status(400).json({ error: "bmc manquant" });
+
+    const png = drawBmcImage(bmc);
+    const b64 = png.toString("base64");
+
+    res.json({ success: true, png_base64: b64 });
+
+  } catch (err) {
+    console.error("Erreur BMC:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log("🚀 SWOT Renderer ready on port", PORT));
+app.listen(PORT, () =>
+  console.log("🚀 Renderer (SWOT + BMC) ready on port", PORT)
+);
