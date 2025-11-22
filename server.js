@@ -6,10 +6,18 @@ const app = express();
 app.use(bodyParser.json({ limit: "20mb" }));
 
 // ========================================================
-// =========== PARSER SWOT ULTRA-TOLÉRANT =================
+// =========== PARSER SWOT CORRIGÉ & ROBUSTE ==============
 // ========================================================
 function parseSwot(rawText) {
-  const lines = (rawText || "").split(/\r?\n/);
+  // 1) Normalisation de base
+  // - swotText peut être undefined
+  // - certains inputs commencent par "=1. Forces :"
+  let txt = (rawText || "")
+    .replace(/^[=\s]+/, "")   // 🔥 enlève les "=" et espaces en tout début de texte
+    .replace(/\r/g, "");      // uniformise les retours à la ligne
+
+  const lines = txt.split("\n");
+
   const sections = {
     forces: [],
     faiblesses: [],
@@ -21,8 +29,9 @@ function parseSwot(rawText) {
 
   for (const line of lines) {
     const trimmed = line.trim();
+    if (!trimmed) continue;
 
-    // TITRES avec tolérance maximale
+    // Titres de sections (tolérants avec ":", "-", etc.)
     if (/^1\.\s*forces?\s*[:\-]?/i.test(trimmed)) {
       current = "forces";
       continue;
@@ -43,9 +52,11 @@ function parseSwot(rawText) {
       continue;
     }
 
-    // PUCE
-    if (/^[-•]/.test(trimmed) && current) {
-      sections[current].push(trimmed.replace(/^[-•]\s*/, ""));
+    // Puces (lignes commençant par "-" ou "•")
+    if (/^\s*[-•]/.test(trimmed) && current) {
+      sections[current].push(
+        trimmed.replace(/^\s*[-•]\s*/, "")
+      );
     }
   }
 
@@ -53,41 +64,16 @@ function parseSwot(rawText) {
 }
 
 // ========================================================
-// =============== LOG DU TEXTE REÇU ======================
-// ========================================================
-function logReceived(swotText) {
-  console.log("===========================================");
-  console.log("=== TEXTE REÇU BRUT =======================");
-  console.log("===========================================");
-  console.log(swotText);
-
-  console.log("\n===========================================");
-  console.log("=== LISTE DES CODEPOINTS UNICODE ==========");
-  console.log("===========================================");
-  for (let i = 0; i < (swotText || "").length; i++) {
-    const char = swotText[i];
-    const cp = swotText.codePointAt(i).toString(16).padStart(4, "0");
-
-    let display = char;
-    if (char === " ") display = "[SPACE]";
-    else if (char === "\n") display = "[LF]";
-    else if (char === "\r") display = "[CR]";
-    else if (char.trim() === "") display = `[INVISIBLE:${cp}]`;
-
-    console.log(`${i}: '${display}' → U+${cp}`);
-  }
-  console.log("===========================================");
-}
-
-// ========================================================
-// =============== RENDU SWOT EN PNG =======================
+// =============== RENDU SWOT EN PNG ======================
 // ========================================================
 function drawSwotImage(swotText) {
   const width = 2000;
   const height = 2000;
+
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
+  // Fond blanc
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
@@ -102,46 +88,54 @@ function drawSwotImage(swotText) {
     menaces: "#fff9c4"
   };
 
-  const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText);
+  const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText || "");
 
   function drawBox(title, textLines, x, y, color) {
+    // Fond de la case
     ctx.fillStyle = color;
     ctx.fillRect(x, y, boxWidth, boxHeight);
 
+    // Bordure
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, boxWidth, boxHeight);
 
+    // Titre
     ctx.fillStyle = "#000000";
     ctx.font = "bold 32px sans-serif";
+    ctx.textBaseline = "top";
     ctx.fillText(title, x + 20, y + 20);
 
+    // Texte
     ctx.font = "24px sans-serif";
     const lineHeight = 30;
-    let yPos = y + 70;
+    let cursorY = y + 70;
     const maxWidth = boxWidth - 40;
 
-    function wrap(text) {
-      const words = text.split(" ");
-      let line = "";
+    function wrap(line) {
+      const words = line.split(" ");
+      let currentLine = "";
 
-      for (const word of words) {
-        const testLine = line ? `${line} ${word}` : word;
-        if (ctx.measureText(testLine).width > maxWidth) {
-          ctx.fillText(line, x + 20, yPos);
-          yPos += lineHeight;
-          line = word;
+      for (const w of words) {
+        const test = currentLine ? currentLine + " " + w : w;
+        if (ctx.measureText(test).width > maxWidth) {
+          ctx.fillText(currentLine, x + 20, cursorY);
+          cursorY += lineHeight;
+          currentLine = w;
         } else {
-          line = testLine;
+          currentLine = test;
         }
       }
-      if (line) {
-        ctx.fillText(line, x + 20, yPos);
-        yPos += lineHeight;
+
+      if (currentLine) {
+        ctx.fillText(currentLine, x + 20, cursorY);
+        cursorY += lineHeight;
       }
     }
 
-    for (const t of textLines) wrap("• " + t);
+    for (const t of textLines) {
+      wrap("• " + t);
+    }
   }
 
   drawBox("Forces", forces, margin, margin, colors.forces);
@@ -153,13 +147,10 @@ function drawSwotImage(swotText) {
 }
 
 // ========================================================
-// ===================== DEBUG MODE =======================
+// ================= ROUTE DE DEBUG =======================
 // ========================================================
 app.post("/test-parsing", (req, res) => {
   const swotText = req.body.swotText || "";
-
-  logReceived(swotText);
-
   const parsed = parseSwot(swotText);
 
   res.json({
@@ -169,15 +160,11 @@ app.post("/test-parsing", (req, res) => {
 });
 
 // ========================================================
-// ================== ROUTE PRINCIPALE ====================
+// ================= ROUTE PRINCIPALE =====================
 // ========================================================
 app.post("/render-swot", (req, res) => {
   try {
     const swotText = req.body.swotText;
-
-    console.log("=========== /render-swot : TEXTE REÇU ===========");
-    logReceived(swotText);
-    console.log("=========== FIN TEXTE REÇU =======================");
 
     if (!swotText) {
       return res.status(400).json({ error: "swotText manquant" });
