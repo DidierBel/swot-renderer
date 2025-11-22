@@ -7,21 +7,25 @@ const app = express();
 app.use(bodyParser.json({ limit: "20mb" }));
 
 // ========================================================
-// == CHARGEMENT DE LA POLICE STXINGKAI (avec fallback) ===
+// == (Optionnel) CHARGEMENT LOCAL DE Brush Script MT ======
 // ========================================================
+// Si tu ajoutes un fichier de police dans ./fonts/BrushScriptMT.ttf,
+// ceci tentera de l'utiliser. Sinon, le système utilisera la police
+// "Brush Script MT" installée, ou tombera sur un fallback.
 try {
-  registerFont(path.join(__dirname, "fonts", "STXingkai.ttf"), {
-    family: "STXingkai"
+  registerFont(path.join(__dirname, "fonts", "BrushScriptMT.ttf"), {
+    family: "Brush Script MT"
   });
-  console.log("Police STXingkai chargée");
+  console.log("Police Brush Script MT chargée");
 } catch (e) {
-  console.warn("⚠️ Impossible de charger STXingkai – fallback activé");
+  console.warn("⚠️ Impossible de charger Brush Script MT en local – utilisation de la police système si dispo.");
 }
 
 // ========================================================
 // =========== PARSER SWOT CORRIGÉ & ROBUSTE ==============
 // ========================================================
 function parseSwot(rawText) {
+  // Normalisation : enlève un éventuel '=' au début (cas "=1. Forces :")
   let txt = (rawText || "")
     .replace(/^[=\s]+/, "")
     .replace(/\r/g, "");
@@ -41,19 +45,28 @@ function parseSwot(rawText) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    if (/^1\.\s*forces?/i.test(trimmed)) {
-      current = "forces"; continue;
+    // Titres de sections (tolérants avec ":" / "-" / variations)
+    if (/^1\.\s*forces?\s*[:\-]?/i.test(trimmed)) {
+      current = "forces";
+      continue;
     }
-    if (/^2\.\s*faiblesses?/i.test(trimmed)) {
-      current = "faiblesses"; continue;
+    if (/^2\.\s*faiblesses?\s*[:\-]?/i.test(trimmed)) {
+      current = "faiblesses";
+      continue;
     }
-    if (/^3\.\s*opportun/i.test(trimmed)) {
-      current = "opportunites"; continue;
+    if (
+      /^3\.\s*opportunités?\s*[:\-]?/i.test(trimmed) ||
+      /^3\.\s*opportunites?\s*[:\-]?/i.test(trimmed)
+    ) {
+      current = "opportunites";
+      continue;
     }
-    if (/^4\.\s*menaces?/i.test(trimmed)) {
-      current = "menaces"; continue;
+    if (/^4\.\s*menaces?\s*[:\-]?/i.test(trimmed)) {
+      current = "menaces";
+      continue;
     }
 
+    // Puces
     if (/^\s*[-•]/.test(trimmed) && current) {
       sections[current].push(
         trimmed.replace(/^\s*[-•]\s*/, "")
@@ -106,64 +119,67 @@ function drawSwotImage(swotText) {
     menaces: "#fff9c4"
   };
 
-  const r = 35; // rayon des coins arrondis
+  const radius = 35; // rayon des coins arrondis
 
   const { forces, faiblesses, opportunites, menaces } = parseSwot(swotText || "");
 
   function drawBox(title, textLines, x, y, color) {
     // --- Fond arrondi ---
     ctx.fillStyle = color;
-    roundRect(ctx, x, y, boxWidth, boxHeight, r);
+    roundRect(ctx, x, y, boxWidth, boxHeight, radius);
     ctx.fill();
 
     // --- Bordure arrondie ---
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 4;
-    roundRect(ctx, x, y, boxWidth, boxHeight, r);
+    roundRect(ctx, x, y, boxWidth, boxHeight, radius);
     ctx.stroke();
 
     // --- Titre ---
     ctx.fillStyle = "#000";
-    ctx.font = "bold 38px STXingkai, sans-serif";
+    ctx.font = "bold 40px \"Brush Script MT\", cursive, sans-serif";
     ctx.textBaseline = "top";
-    ctx.fillText(title, x + 20, y + 20);
+    ctx.fillText(title, x + 24, y + 24);
 
     // --- Texte ---
-    ctx.font = "28px STXingkai, sans-serif";
-    const lineHeight = 40;
-    let cursorY = y + 120;  // 🔥 2 interlignes sous le titre
+    ctx.font = "30px \"Brush Script MT\", cursive, sans-serif";
+    const lineHeight = 42;
+    // 🔥 2 interlignes sous le titre
+    let cursorY = y + 24 + 40 + lineHeight * 2;
 
-    const maxWidth = boxWidth - 60;
+    const maxWidth = boxWidth - 70;
+    const bulletX = x + 32;  // position de la puce
+    const textX = x + 60;    // 🔥 le texte commence ici, les retours de ligne alignés sur cette colonne
 
-    // Gestion fine des retours à la ligne
     function wrapBulletLine(text) {
       const words = text.split(" ");
-      let cur = "";
-      let first = true;
+      let currentLine = "";
 
-      words.forEach((w) => {
-        const test = cur ? cur + " " + w : w;
-        if (ctx.measureText(test).width > maxWidth) {
-          ctx.fillText(cur, x + 60, cursorY); // 🔥 alignement sous la 1ère ligne du texte (x + 60)
+      for (const w of words) {
+        const test = currentLine ? currentLine + " " + w : w;
+        if (ctx.measureText(test).width > (maxWidth)) {
+          // on dessine la ligne complète
+          ctx.fillText(currentLine, textX, cursorY);
           cursorY += lineHeight;
-          cur = w;
+          currentLine = w;
         } else {
-          cur = test;
+          currentLine = test;
         }
-      });
+      }
 
-      if (cur) {
-        ctx.fillText(cur, x + 60, cursorY);
+      if (currentLine) {
+        ctx.fillText(currentLine, textX, cursorY);
         cursorY += lineHeight;
       }
     }
 
-    // Dessin des bullet points
-    textLines.forEach((line) => {
-      // Puce alignée
-      ctx.fillText("•", x + 30, cursorY);
+    // Boucle sur chaque puce
+    for (const line of textLines) {
+      // puce
+      ctx.fillText("•", bulletX, cursorY);
+      // texte aligné à droite de la puce
       wrapBulletLine(line);
-    });
+    }
   }
 
   drawBox("Forces", forces, margin, margin, colors.forces);
@@ -189,16 +205,18 @@ app.post("/test-parsing", (req, res) => {
 // ========================================================
 app.post("/render-swot", (req, res) => {
   try {
-    if (!req.body.swotText) {
+    const swotText = req.body.swotText;
+    if (!swotText) {
       return res.status(400).json({ error: "swotText manquant" });
     }
 
-    const png = drawSwotImage(req.body.swotText);
-    res.json({ success: true, png_base64: png.toString("base64") });
+    const png = drawSwotImage(swotText);
+    const b64 = png.toString("base64");
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    res.json({ success: true, png_base64: b64 });
+  } catch (e) {
+    console.error("Erreur render-swot :", e);
+    res.status(500).json({ error: e.message });
   }
 });
 
