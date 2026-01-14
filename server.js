@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 // Import des 2 modules Renderer
 const { drawSwotImage } = require("./swotRenderer");
 const { drawBmcImage } = require("./bmcRenderer");
+const { drawMatrixImage } = require("./matrixRenderer");
 
 const app = express();
 app.use(bodyParser.json({ limit: "20mb" }));
@@ -45,6 +46,26 @@ app.post("/render-bmc", async (req, res) => {
 
   } catch (err) {
     console.error("Erreur BMC:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================================================
+// 🟢 ROUTE MATRICE IMPORTANCE / URGENCE
+// ========================================================
+app.post("/render-matrix", (req, res) => {
+  try {
+    const matrixText = req.body.matrixText;
+    if (!matrixText)
+      return res.status(400).json({ error: "matrixText manquant" });
+
+    const png = drawMatrixImage(matrixText);
+    const b64 = png.toString("base64");
+
+    res.json({ success: true, png_base64: b64 });
+
+  } catch (err) {
+    console.error("Erreur MATRICE:", err);
     res.status(500).json({ error: err.message });
   }
 });
