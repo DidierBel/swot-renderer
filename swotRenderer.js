@@ -1,17 +1,4 @@
-const { createCanvas, registerFont } = require("canvas");
-const path = require("path");
-
-// ========================================================
-// == CHARGEMENT DE LA POLICE Brush Script MT (optionnel) ==
-// ========================================================
-try {
-  registerFont(path.join(__dirname, "fonts", "BrushScriptMT.ttf"), {
-    family: "Brush Script MT"
-  });
-  console.log("Police Brush Script MT chargée");
-} catch (e) {
-  console.warn("⚠️ Impossible de charger Brush Script MT en local – fallback.");
-}
+const { createCanvas } = require("canvas");
 
 // ========================================================
 // =========== PARSER SWOT CORRIGÉ & ROBUSTE ==============
@@ -98,10 +85,10 @@ function drawSwotImage(swotText) {
 
   // 🎨 COULEURS
   const colors = {
-    forces: "#00e091",       // Forest Green
-    faiblesses: "#ffd800",   // Yellow
-    opportunites: "#a998ee", // Lavender
-    menaces: "#FF5E4D"       // Rouge capucine
+    forces: "#00e091",
+    faiblesses: "#ffd800",
+    opportunites: "#a998ee",
+    menaces: "#FF5E4D"
   };
 
   const radius = 35;
@@ -122,12 +109,12 @@ function drawSwotImage(swotText) {
 
     // Titre
     ctx.fillStyle = "#000";
-    ctx.font = "bold 40px \"Brush Script MT\", cursive, sans-serif";
+    ctx.font = "bold 40px Arial";
     ctx.textBaseline = "top";
     ctx.fillText(title, x + 24, y + 24);
 
     // Texte
-    ctx.font = "30px \"Brush Script MT\", cursive, sans-serif";
+    ctx.font = "30px Arial";
     const lineHeight = 42;
 
     // Deux interlignes après le titre
@@ -178,3 +165,4 @@ module.exports = {
   parseSwot,
   drawSwotImage
 };
+
